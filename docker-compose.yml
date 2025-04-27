@@ -66,8 +66,8 @@ services:
 
   agendamento-service:
     build:
-      context: agendamento-service
-      dockerfile: agendamento-service/Dockerfile
+      context: ./agendamento-service
+      dockerfile: Dockerfile
     container_name: agendamento-service
     depends_on:
       - mysql-agendamento
@@ -86,8 +86,8 @@ services:
 
   notificacao-service:
     build:
-      context: notificacao-service
-      dockerfile: notificacao-service/Dockerfile
+      context: ./notificacao-service
+      dockerfile: Dockerfile
     container_name: notificacao-service
     depends_on:
       - kafka
@@ -102,8 +102,8 @@ services:
 
   historico-service:
     build:
-      context: historico-service
-      dockerfile: historico-service/Dockerfile
+      context: ./historico-service
+      dockerfile: Dockerfile
     container_name: historico-service
     depends_on:
       - mysql-historico
