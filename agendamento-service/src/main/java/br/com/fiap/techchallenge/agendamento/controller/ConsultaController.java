@@ -63,13 +63,12 @@ public class ConsultaController {
     public ResponseEntity<Consulta> criarConsulta(@Valid @RequestBody Consulta consulta) {
         logger.info("Recebida requisição para criar nova consulta");
         try {
-            // A validação das entidades relacionadas (Paciente, Medico, Enfermeiro) é feita no ConsultaService
             Consulta novaConsulta = consultaService.salvarConsulta(consulta);
             logger.info("Nova consulta criada com ID: {}", novaConsulta.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(novaConsulta);
         } catch (EntityNotFoundException | IllegalArgumentException e) {
             logger.error("Erro ao criar consulta: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(null); // Retorna 400 Bad Request com corpo vazio
+            return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
             logger.error("Erro inesperado ao criar consulta: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
