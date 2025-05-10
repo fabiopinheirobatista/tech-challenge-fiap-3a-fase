@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   # Banco de Dados para o Serviço de Agendamento
   db-agendamento:
@@ -6,11 +8,11 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: agendamento_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: agendamento_user
+      MYSQL_PASSWORD: secure_password_agendamento
+      MYSQL_ROOT_PASSWORD: secure_root_password_agendamento
     ports:
-      - "3306:3306" # Mapeia a porta 33061 do host para a 3306 do container
+      - "33061:3306" # Porta mapeada corretamente
     volumes:
       - db_data_agendamento:/var/lib/mysql
     networks:
@@ -23,11 +25,11 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: historico_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: historico_user
+      MYSQL_PASSWORD: secure_password_historico
+      MYSQL_ROOT_PASSWORD: secure_root_password_historico
     ports:
-      - "33062:3306" # Mapeia a porta 33062 do host para a 3306 do container
+      - "33062:3306" # Porta mapeada corretamente
     volumes:
       - db_data_historico:/var/lib/mysql
     networks:
@@ -46,7 +48,7 @@ services:
     networks:
       - hospital-net
     healthcheck:
-      test: echo srvr | nc localhost 2181 || exit 1
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -68,7 +70,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://${HOST_IP:-localhost}:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -78,7 +80,7 @@ services:
         aliases:
           - kafka
     healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list" ]
+      test: ["CMD-SHELL", "nc -z localhost 9092"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -93,17 +95,16 @@ services:
     depends_on:
       - db-agendamento
       - kafka
-      - zookeeper
     ports:
       - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DB_HOST_AGENDAMENTO: db-agendamento
       DB_NAME_AGENDAMENTO: agendamento_db
-      DB_USER_AGENDAMENTO: user
-      DB_PASSWORD_AGENDAMENTO: password
+      DB_USER_AGENDAMENTO: agendamento_user
+      DB_PASSWORD_AGENDAMENTO: secure_password_agendamento
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_FLYWAY_LOCATIONS: classpath:db/migration/agendamento # Garante que o Flyway use o caminho correto
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration/agendamento
     networks:
       - hospital-net
 
@@ -140,16 +141,17 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       DB_HOST_HISTORICO: db-historico
       DB_NAME_HISTORICO: historico_db
-      DB_USER_HISTORICO: user
-      DB_PASSWORD_HISTORICO: password
+      DB_USER_HISTORICO: historico_user
+      DB_PASSWORD_HISTORICO: secure_password_historico
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_FLYWAY_LOCATIONS: classpath:db/migration/historico # Garante que o Flyway use o caminho correto
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration/historico
     networks:
       - hospital-net
 
   kafdrop:
     image: obsidiandynamics/kafdrop
     container_name: kafdrop
+    restart: unless-stopped
     ports:
       - "9000:9000"
     environment:
@@ -159,6 +161,11 @@ services:
       - kafka
     networks:
       - hospital-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
 volumes:
   db_data_agendamento:
@@ -169,4 +176,3 @@ networks:
     driver: bridge
     name: hospital-net
     attachable: true
-
