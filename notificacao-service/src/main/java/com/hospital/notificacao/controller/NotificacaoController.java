@@ -33,7 +33,7 @@ public class NotificacaoController {
         if (notificacao != null) {
             return new ResponseEntity<>(notificacao, HttpStatus.OK);
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @GetMapping("/consulta/{consultaId}")
@@ -66,7 +66,7 @@ public class NotificacaoController {
         if (updatedNotificacao != null) {
             return new ResponseEntity<>(updatedNotificacao, HttpStatus.OK);
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @PostMapping("/{id}/enviar")
