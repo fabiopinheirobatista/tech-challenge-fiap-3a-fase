@@ -6,6 +6,12 @@ services:
     image: mysql:8.0
     container_name: db-agendamento
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     environment:
       MYSQL_DATABASE: agendamento_db
       MYSQL_USER: agendamento_user
@@ -93,8 +99,10 @@ services:
     container_name: agendamento-service
     restart: on-failure
     depends_on:
-      - db-agendamento
-      - kafka
+      db-agendamento:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     ports:
       - "8081:8081"
     environment:

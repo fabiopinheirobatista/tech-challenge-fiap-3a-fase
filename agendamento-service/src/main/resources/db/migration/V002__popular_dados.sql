@@ -15,9 +15,9 @@ INSERT INTO paciente (nome, data_nascimento, email, telefone) VALUES
           ('Vinicius Souza', '1965-09-10', 'vinicius.souza@exemplo.com', NULL);
 
 -- Inserir 5 Enfermeiros
-INSERT INTO enfermeiro (nome) VALUES
-          ('Enf. Mariana Almeida'),
-          ('Enf. Pedro Rocha'),
-          ('Enf. Sofia Martins'),
-          ('Enf. Lucas Ferreira'),
-          ('Enf. Gabriela Dias');
+INSERT INTO enfermeiro (nome, coren) VALUES
+          ('Enf. Mariana Almeida','AAA'),
+          ('Enf. Pedro Rocha','AAA'),
+          ('Enf. Sofia Martins','AAA'),
+          ('Enf. Lucas Ferreira','AAA'),
+          ('Enf. Gabriela Dias','AAA');

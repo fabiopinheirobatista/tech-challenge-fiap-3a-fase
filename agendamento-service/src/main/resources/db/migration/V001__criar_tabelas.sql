@@ -15,7 +15,8 @@ CREATE TABLE paciente (
 
 CREATE TABLE enfermeiro (
                             id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                            nome VARCHAR(255) NOT NULL
+                            nome VARCHAR(255) NOT NULL,
+                            coren VARCHAR(50) NOT NULL
 );
 
 CREATE TABLE consultas (
