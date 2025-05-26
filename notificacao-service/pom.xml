@@ -10,9 +10,13 @@
     </parent>
     
     <artifactId>notificacao-service</artifactId>
-    <name>notificacao-service</name>
-    <description>Serviço de Notificações para Sistema Hospitalar</description>
-    
+    <version>0.0.1-SNAPSHOT</version>
+    <name>Serviço de Notificação</name>
+    <description>Microserviço de Notificações com Kafka</description>
+    <properties>
+        <java.version>17</java.version>
+        <jacoco.version>0.8.11</jacoco.version> <!-- Versão do JaCoCo -->
+    </properties>
     <dependencies>
         <!-- Spring Boot -->
         <dependency>

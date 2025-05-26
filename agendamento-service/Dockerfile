@@ -12,7 +12,7 @@ RUN mvn dependency:go-offline
 COPY src ./src
 
 # Compila a aplicação e gera o JAR
-RUN mvn package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Estágio 2: Imagem final leve
 FROM eclipse-temurin:17-jre-alpine

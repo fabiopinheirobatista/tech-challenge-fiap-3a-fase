@@ -1,9 +1,68 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # Serviços de Infraestrutura
+  # Banco de Dados para o Serviço de Agendamento
+  db-agendamento:
+    image: mysql:8.0
+    container_name: db-agendamento
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      MYSQL_DATABASE: agendamento_db
+      MYSQL_USER: agendamento_user
+      MYSQL_PASSWORD: secure_password_agendamento
+      MYSQL_ROOT_PASSWORD: secure_root_password_agendamento
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data_agendamento:/var/lib/mysql
+    networks:
+      - hospital-network
+
+  # Banco de Dados para o Serviço de Histórico
+  db-historico:
+    image: mysql:8.0
+    container_name: db-historico
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: historico_db
+      MYSQL_USER: historico_user
+      MYSQL_PASSWORD: secure_password_historico
+      MYSQL_ROOT_PASSWORD: secure_root_password_historico
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data_historico:/var/lib/mysql
+    networks:
+      - hospital-network
+
+  # Banco de Dados para o Serviço de Notificação
+  db-notificacao:
+    image: mysql:8.0
+    container_name: db-notificacao
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: notificacao_db
+      MYSQL_USER: notificacao_user
+      MYSQL_PASSWORD: secure_password_notificacao
+      MYSQL_ROOT_PASSWORD: secure_root_password_notificacao
+    ports:
+      - "3308:3306"
+    volumes:
+      - db_data_notificacao:/var/lib/mysql
+    networks:
+      - hospital-network
+
+  # Zookeeper
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.3.2
+    container_name: zookeeper
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -11,11 +70,21 @@ services:
       - "2181:2181"
     networks:
       - hospital-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
+  # Kafka
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.3.2
+    container_name: kafka
+    restart: unless-stopped
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
     environment:
@@ -28,76 +97,43 @@ services:
     networks:
       - hospital-network
 
-  mysql-agendamento:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: agendamento_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-agendamento-data:/var/lib/mysql
-    networks:
-      - hospital-network
-
-  mysql-notificacao:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: notificacao_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql-notificacao-data:/var/lib/mysql
-    networks:
-      - hospital-network
-
-  mysql-historico:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: historico_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-    ports:
-      - "3308:3306"
-    volumes:
-      - mysql-historico-data:/var/lib/mysql
-    networks:
-      - hospital-network
-
-  # Serviços da Aplicação
+  # Microsserviço de Agendamento
   agendamento-service:
     build:
       context: ./agendamento-service
       dockerfile: Dockerfile
+    container_name: agendamento-service
+    restart: on-failure
+    depends_on:
+      - db-agendamento
+      - kafka
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-agendamento:3306/agendamento_db
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:mysql://db-agendamento:3306/agendamento_db
+      SPRING_DATASOURCE_USERNAME: agendamento_user
+      SPRING_DATASOURCE_PASSWORD: secure_password_agendamento
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-    depends_on:
-      - mysql-agendamento
-      - kafka
     networks:
       - hospital-network
 
+  # Microsserviço de Notificação
   notificacao-service:
     build:
       context: ./notificacao-service
       dockerfile: Dockerfile
+    container_name: notificacao-service
+    restart: on-failure
+    depends_on:
+      - db-notificacao
+      - kafka
+      - agendamento-service
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notificacao:3306/notificacao_db
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:mysql://db-notificacao:3306/notificacao_db
+      SPRING_DATASOURCE_USERNAME: notificacao_user
+      SPRING_DATASOURCE_PASSWORD: secure_password_notificacao
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SPRING_MAIL_HOST: smtp.gmail.com
       SPRING_MAIL_PORT: 587
@@ -105,36 +141,37 @@ services:
       SPRING_MAIL_PASSWORD: sua-senha-de-app
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
-    depends_on:
-      - mysql-notificacao
-      - kafka
-      - agendamento-service
     networks:
       - hospital-network
 
-  historico-service:
+  # Microsserviço de Histórico
+  servico-historico:
     build:
       context: ./historico-service
       dockerfile: Dockerfile
+    container_name: historico-service
+    restart: on-failure
+    depends_on:
+      - db-historico
+      - kafka
+      - agendamento-service
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-historico:3306/historico_db
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:mysql://db-historico:3306/historico_db
+      SPRING_DATASOURCE_USERNAME: historico_user
+      SPRING_DATASOURCE_PASSWORD: secure_password_historico
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-    depends_on:
-      - mysql-historico
-      - kafka
-      - agendamento-service
     networks:
       - hospital-network
 
+# Redes
 networks:
   hospital-network:
     driver: bridge
 
+# Volumes
 volumes:
-  mysql-agendamento-data:
-  mysql-notificacao-data:
-  mysql-historico-data:
+  db_data_agendamento:
+  db_data_historico:
+  db_data_notificacao:

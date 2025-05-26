@@ -11,7 +11,7 @@
     <groupId>br.com.fiap.techchallenge</groupId>
     <artifactId>historico-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>historico-service</name>
+    <name>Serviço de Histórico</name>
     <description>Microserviço de Histórico com GraphQL</description>
     <properties>
         <java.version>17</java.version>
