@@ -1,7 +1,8 @@
-package com.hospital.notificacao;
+package br.com.fiap.techchallenge.notificacao;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
 
 @SpringBootApplication
 public class NotificacaoServiceApplication {
@@ -9,4 +10,6 @@ public class NotificacaoServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(NotificacaoServiceApplication.class, args);
     }
+
 }
+

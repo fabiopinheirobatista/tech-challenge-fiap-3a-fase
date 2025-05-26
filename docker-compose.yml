@@ -7,7 +7,7 @@ services:
     container_name: db-agendamento
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent" ]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -18,11 +18,11 @@ services:
       MYSQL_PASSWORD: secure_password_agendamento
       MYSQL_ROOT_PASSWORD: secure_root_password_agendamento
     ports:
-      - "3306:3306"
+      - "3306:3306" # Porta mapeada corretamente externa:interna dentro da maquina docker
     volumes:
       - db_data_agendamento:/var/lib/mysql
     networks:
-      - hospital-network
+      - hospital-net
 
   # Banco de Dados para o Serviço de Histórico
   db-historico:
@@ -35,30 +35,13 @@ services:
       MYSQL_PASSWORD: secure_password_historico
       MYSQL_ROOT_PASSWORD: secure_root_password_historico
     ports:
-      - "3307:3306"
+      - "3307:3307" # Porta mapeada corretamente
     volumes:
       - db_data_historico:/var/lib/mysql
     networks:
-      - hospital-network
+      - hospital-net
 
-  # Banco de Dados para o Serviço de Notificação
-  db-notificacao:
-    image: mysql:8.0
-    container_name: db-notificacao
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: notificacao_db
-      MYSQL_USER: notificacao_user
-      MYSQL_PASSWORD: secure_password_notificacao
-      MYSQL_ROOT_PASSWORD: secure_root_password_notificacao
-    ports:
-      - "3308:3306"
-    volumes:
-      - db_data_notificacao:/var/lib/mysql
-    networks:
-      - hospital-network
-
-  # Zookeeper
+  # Zookeeper para o Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.2
     container_name: zookeeper
@@ -69,7 +52,7 @@ services:
     ports:
       - "2181:2181"
     networks:
-      - hospital-network
+      - hospital-net
     healthcheck:
       test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
       interval: 10s
@@ -81,21 +64,32 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.3.2
     container_name: kafka
+    hostname: kafka
     restart: unless-stopped
     depends_on:
       zookeeper:
         condition: service_healthy
     ports:
       - "9092:9092"
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://${HOST_IP:-localhost}:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     networks:
-      - hospital-network
+      hospital-net:
+        aliases:
+          - kafka
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   # Microsserviço de Agendamento
   agendamento-service:
@@ -105,17 +99,22 @@ services:
     container_name: agendamento-service
     restart: on-failure
     depends_on:
-      - db-agendamento
-      - kafka
+      db-agendamento:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db-agendamento:3306/agendamento_db
-      SPRING_DATASOURCE_USERNAME: agendamento_user
-      SPRING_DATASOURCE_PASSWORD: secure_password_agendamento
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST_AGENDAMENTO: db-agendamento
+      DB_NAME_AGENDAMENTO: agendamento_db
+      DB_USER_AGENDAMENTO: agendamento_user
+      DB_PASSWORD_AGENDAMENTO: secure_password_agendamento
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration/agendamento
     networks:
-      - hospital-network
+      - hospital-net
 
   # Microsserviço de Notificação
   notificacao-service:
@@ -125,24 +124,14 @@ services:
     container_name: notificacao-service
     restart: on-failure
     depends_on:
-      - db-notificacao
       - kafka
-      - agendamento-service
     ports:
-      - "8081:8081"
+      - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db-notificacao:3306/notificacao_db
-      SPRING_DATASOURCE_USERNAME: notificacao_user
-      SPRING_DATASOURCE_PASSWORD: secure_password_notificacao
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SPRING_MAIL_HOST: smtp.gmail.com
-      SPRING_MAIL_PORT: 587
-      SPRING_MAIL_USERNAME: seu-email@gmail.com
-      SPRING_MAIL_PASSWORD: sua-senha-de-app
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     networks:
-      - hospital-network
+      - hospital-net
 
   # Microsserviço de Histórico
   servico-historico:
@@ -154,24 +143,44 @@ services:
     depends_on:
       - db-historico
       - kafka
-      - agendamento-service
     ports:
-      - "8082:8082"
+      - "8083:8083"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db-historico:3306/historico_db
-      SPRING_DATASOURCE_USERNAME: historico_user
-      SPRING_DATASOURCE_PASSWORD: secure_password_historico
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST_HISTORICO: db-historico
+      DB_NAME_HISTORICO: historico_db
+      DB_USER_HISTORICO: historico_user
+      DB_PASSWORD_HISTORICO: secure_password_historico
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration/historico
     networks:
-      - hospital-network
+      - hospital-net
 
-# Redes
-networks:
-  hospital-network:
-    driver: bridge
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKER_CONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      - kafka
+    networks:
+      - hospital-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
-# Volumes
 volumes:
   db_data_agendamento:
   db_data_historico:
-  db_data_notificacao:
+
+networks:
+  hospital-net:
+    driver: bridge
+    name: hospital-net
+    attachable: true
