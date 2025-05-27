@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-  # Banco de Dados para o Serviço de Agendamento
   db-agendamento:
     image: mysql:8.0
     container_name: db-agendamento
@@ -18,7 +17,7 @@ services:
       MYSQL_PASSWORD: secure_password_agendamento
       MYSQL_ROOT_PASSWORD: secure_root_password_agendamento
     ports:
-      - "3306:3306" # Porta mapeada corretamente externa:interna dentro da maquina docker
+      - "3306:3306"
     volumes:
       - db_data_agendamento:/var/lib/mysql
     networks:
@@ -26,19 +25,26 @@ services:
 
   mysql-notificacao:
     image: mysql:8.0
+    container_name: mysql-notificacao
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: notificacao_db
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
-      - "3307:3307"
+      - "3307:3306"
     volumes:
       - mysql-notificacao-data:/var/lib/mysql
     networks:
       - hospital-net
 
-  # Zookeeper para o Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.2
     container_name: zookeeper
@@ -57,7 +63,6 @@ services:
       retries: 5
       start_period: 10s
 
-  # Kafka
   kafka:
     image: confluentinc/cp-kafka:7.3.2
     container_name: kafka
@@ -73,7 +78,8 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://${HOST_IP:-localhost}:29092
+      #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://${HOST_IP:-localhost}:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://kafka:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -87,8 +93,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+      start_period: 15s
 
-  # Microsserviço de Agendamento
   agendamento-service:
     build:
       context: ./agendamento-service
@@ -109,6 +115,7 @@ services:
       DB_USER_AGENDAMENTO: agendamento_user
       DB_PASSWORD_AGENDAMENTO: secure_password_agendamento
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_CONSULTA_NOME: consultas.topic
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration
     networks:
       - hospital-net
@@ -117,23 +124,28 @@ services:
     build:
       context: ./notificacao-service
       dockerfile: Dockerfile
+    container_name: notificacao-service
+    restart: on-failure
     ports:
-      - "8081:8081"
+      - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notificacao:3307/notificacao_db
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notificacao:3306/notificacao_db
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC_CONSULTA_EVENTS: consultas.topic
       SPRING_MAIL_HOST: smtp.gmail.com
       SPRING_MAIL_PORT: 587
       SPRING_MAIL_USERNAME: seu-email@gmail.com
       SPRING_MAIL_PASSWORD: sua-senha-de-app
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
     depends_on:
-      - mysql-notificacao
-      - kafka
-      - agendamento-service
+      mysql-notificacao:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     networks:
       - hospital-net
 
@@ -147,7 +159,8 @@ services:
       KAFKA_BROKER_CONNECT: "kafka:9092"
       JVM_OPTS: "-Xms32M -Xmx64M"
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     networks:
       - hospital-net
     healthcheck:
@@ -155,13 +168,12 @@ services:
       interval: 10s
       timeout: 10s
       retries: 3
+      start_period: 5s
 
 volumes:
   db_data_agendamento:
-  db_data_historico:
   mysql-notificacao-data:
 networks:
   hospital-net:
     driver: bridge
     name: hospital-net
-    attachable: true

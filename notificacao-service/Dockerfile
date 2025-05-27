@@ -1,16 +1,22 @@
-FROM maven:3.8.7-openjdk-18-slim AS maven_build
-COPY pom.xml /build/
-
-COPY src /build/src/
-WORKDIR /build/
-
-RUN mvn clean install -DskipTests
-
-FROM openjdk:17.0.1-jdk-slim
-ENV TZ=America/Sao_Paulo
+FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /app
-COPY --from=MAVEN_BUILD /build/target/*.jar /app/app.jar
 
-EXPOSE 9093
-ENTRYPOINT ["java", "--add-opens", "java.base/java.io=ALL-UNNAMED", "-jar", "/app/app.jar"]
+COPY pom.xml .
+RUN mvn dependency:go-offline
+
+COPY src ./src
+
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+
+ENV TZ=America/Sao_Paulo
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
