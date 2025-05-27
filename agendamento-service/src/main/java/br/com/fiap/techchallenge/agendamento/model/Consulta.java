@@ -40,7 +40,7 @@ public class Consulta {
 
     //@NotNull(message = "Status da consulta é obrigatório")
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status")
     private StatusConsulta status;
 
     @Column(columnDefinition = "TEXT")
