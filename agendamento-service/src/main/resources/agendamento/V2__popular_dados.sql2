@@ -1,0 +1,27 @@
+-- V002__popular_dados.sql
+-- Script para popular as tabelas do serviço de agendamento com dados de exemplo
+
+-- Inserir 5 Médicos
+INSERT INTO medico (nome, especialidade) VALUES
+('Dr. Carlos Alberto', 'Cardiologia'),
+('Dra. Ana Beatriz', 'Pediatria'),
+('Dr. João Paulo', 'Ortopedia'),
+('Dra. Fernanda Lima', 'Dermatologia'),
+('Dr. Ricardo Souza', 'Neurologia');
+
+-- Inserir 5 Pacientes
+INSERT INTO paciente (nome, data_nascimento) VALUES
+('Maria Silva', '1985-07-15'),
+('José Santos', '1992-03-22'),
+('Antônio Oliveira', '1978-11-05'),
+('Cláudia Pereira', '2001-01-30'),
+('Francisco Costa', '1965-09-10');
+
+-- Inserir 5 Enfermeiros
+INSERT INTO enfermeiro (nome) VALUES
+('Enf. Mariana Almeida'),
+('Enf. Pedro Rocha'),
+('Enf. Sofia Martins'),
+('Enf. Lucas Ferreira'),
+('Enf. Gabriela Dias');
+

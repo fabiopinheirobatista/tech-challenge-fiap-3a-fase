@@ -1,0 +1,32 @@
+-- V001__criar_tabelas.sql
+-- Script para criar as tabelas do serviço de agendamento
+
+CREATE TABLE medico (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    especialidade VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE paciente (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+     email VARCHAR(255) NULL,
+      telefone VARCHAR(50) NULL,
+    data_nascimento DATE NOT NULL
+);
+
+CREATE TABLE enfermeiro (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE consulta (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    paciente_id BIGINT NOT NULL,
+    medico_id BIGINT NOT NULL,
+    data_hora DATETIME NOT NULL,
+    status VARCHAR(50),
+    FOREIGN KEY (paciente_id) REFERENCES paciente(id),
+    FOREIGN KEY (medico_id) REFERENCES medico(id)
+);
+
