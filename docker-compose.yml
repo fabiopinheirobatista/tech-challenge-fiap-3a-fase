@@ -93,7 +93,7 @@ services:
       context: ./notificacao-service
       dockerfile: Dockerfile
     ports:
-      - "8081:8081"
+      - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notificacao:3306/notificacao_db
       SPRING_DATASOURCE_USERNAME: user

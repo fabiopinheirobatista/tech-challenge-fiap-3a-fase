@@ -51,14 +51,6 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail;
     }
 
-    @ExceptionHandler(EntidadeNaoEncontradaException.class)
-    public ProblemDetail handleEntidadeNaoEncontrada(EntidadeNaoEncontradaException e) {
-        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
-        problemDetail.setTitle(e.getMessage());
-        problemDetail.setType(URI.create("https://algatransito.com/erros/nao-encontrado"));
-        problemDetail.setDetail(String.format("Stack Trace: %s",e.toString()));
-        return problemDetail;
-    }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException e) {
