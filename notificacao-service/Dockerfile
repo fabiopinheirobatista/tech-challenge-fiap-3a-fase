@@ -1,31 +1,16 @@
-# Estágio 1: Build com Maven
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.8.7-openjdk-18-slim AS maven_build
+COPY pom.xml /build/
 
-# Define o diretório de trabalho
+COPY src /build/src/
+WORKDIR /build/
+
+RUN mvn clean install -DskipTests
+
+FROM openjdk:17.0.1-jdk-slim
+ENV TZ=America/Sao_Paulo
+
 WORKDIR /app
+COPY --from=MAVEN_BUILD /build/target/*.jar /app/app.jar
 
-# Copia o pom.xml e baixa as dependências (cache)
-COPY pom.xml .
-RUN mvn dependency:go-offline
-
-# Copia o restante do código-fonte
-COPY src ./src
-
-# Compila a aplicação e gera o JAR
-RUN mvn package -DskipTests
-
-# Estágio 2: Imagem final leve
-FROM eclipse-temurin:17-jre-alpine
-
-# Define o diretório de trabalho
-WORKDIR /app
-
-# Copia o JAR do estágio de build
-COPY --from=build /app/target/*.jar app.jar
-
-# Expõe a porta que a aplicação vai rodar (definida em application.properties)
-EXPOSE 8082
-
-# Comando para rodar a aplicação
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
+EXPOSE 9093
+ENTRYPOINT ["java", "--add-opens", "java.base/java.io=ALL-UNNAMED", "-jar", "/app/app.jar"]

@@ -5,8 +5,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version> <!-- Usar uma versão estável recente -->
-        <relativePath/> <!-- busca o parent do repositório -->
+        <version>3.2.5</version>
+        <relativePath/>
     </parent>
     <groupId>br.com.fiap.techchallenge</groupId>
     <artifactId>agendamento-service</artifactId>

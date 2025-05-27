@@ -24,6 +24,19 @@ services:
     networks:
       - hospital-net
 
+  mysql-notificacao:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: notificacao_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3307:3307"
+    volumes:
+      - mysql-notificacao-data:/var/lib/mysql
+    networks:
+      - hospital-net
 
   # Zookeeper para o Kafka
   zookeeper:
@@ -100,6 +113,30 @@ services:
     networks:
       - hospital-net
 
+  notificacao-service:
+    build:
+      context: ./notificacao-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notificacao:3307/notificacao_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: seu-email@gmail.com
+      SPRING_MAIL_PASSWORD: sua-senha-de-app
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+    depends_on:
+      - mysql-notificacao
+      - kafka
+      - agendamento-service
+    networks:
+      - hospital-net
+
   kafdrop:
     image: obsidiandynamics/kafdrop
     container_name: kafdrop
@@ -122,7 +159,7 @@ services:
 volumes:
   db_data_agendamento:
   db_data_historico:
-
+  mysql-notificacao-data:
 networks:
   hospital-net:
     driver: bridge
