@@ -8,7 +8,7 @@ CREATE TABLE notificacoes (
                               medico_nome VARCHAR(255),
                               data_consulta VARCHAR(20) NOT NULL,
                               hora_consulta VARCHAR(20) NOT NULL,
-                              especialidade VARCHAR(100) NOT NULL,
+                              especialidade VARCHAR(100),
                               tipo_notificacao ENUM('CONSULTA_CRIADA','CONSULTA_ATUALIZADA','CONSULTA_CANCELADA','LEMBRETE') NOT NULL,
                               status ENUM('PENDENTE','ENVIADA','FALHA') NOT NULL,
                               data_envio DATETIME,

@@ -41,7 +41,6 @@ public class Notificacao {
     @Column(name = "hora_consulta", nullable = false)
     private String horaConsulta;
 
-    @Column(nullable = false)
     private String especialidade;
 
     @Column(name = "tipo_notificacao", nullable = false)

@@ -9,6 +9,7 @@ public class ConsultaNotificacaoMapper {
     public static ConsultaNotificacaoDTO fromEntity(Consulta consulta, String tipoNotificacao) {
         return new ConsultaNotificacaoDTO(
                 consulta.getId(),
+                consulta.getMedico().getId(),
                 consulta.getPaciente().getId(),
                 consulta.getPaciente().getNome(),
                 consulta.getPaciente().getEmail(),

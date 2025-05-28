@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class ConsultaNotificacaoDTO {
 
     private Long id;
+    private Long medicoId;
     private Long pacienteId;
     private String pacienteNome;
     private String pacienteEmail;
